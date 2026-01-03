@@ -43,8 +43,8 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function sendEmailWithEmailJS(orderData) {
     // IMPORTANTE: Substitua pelos seus dados reais do EmailJS.
-    const serviceID = 'YOUR_SERVICE_ID';
-    const templateID = 'YOUR_TEMPLATE_ID';
+    const serviceID = 'service_jddjd7u';
+    const templateID = 'template_hel61l6';
 
     // Mapeia os dados do pedido para as variáveis do seu template EmailJS.
     const templateParams = {
