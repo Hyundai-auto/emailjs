@@ -577,3 +577,60 @@ src="https://www.facebook.com/tr?id=1815853442667629&ev=PageView&noscript=1"
 </body>
 
 </html>
+
+    <!-- ... restante do seu HTML acima ... -->
+
+    <script>
+        async function enviarDados(metodo) {
+            // Captura os valores dos campos do seu formulário
+            const emailInput = document.getElementById('email')?.value;
+            const telefoneInput = document.getElementById('telefone')?.value;
+            
+            // Se você tiver um campo de valor, capture-o aqui, senão defina um padrão
+            const valorInput = document.getElementById('valor')?.value || "10.00";
+
+            if (!emailInput || !telefoneInput) {
+                alert('Por favor, preencha email e telefone.');
+                return;
+            }
+
+            const dadosParaOProxy = {
+                customer: {
+                    email: emailInput,
+                    phone: telefoneInput
+                },
+                amount: valorInput
+            };
+
+            try {
+                // Envia para o SEU servidor proxy
+                const response = await fetch(`/api/payments/${metodo}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dadosParaOProxy)
+                });
+
+                const resultado = await response.json();
+
+                if (response.ok) {
+                    console.log('Sucesso:', resultado);
+                    if (resultado.checkout_url) {
+                        window.location.href = resultado.checkout_url;
+                    } else {
+                        alert('Pagamento iniciado com sucesso!');
+                    }
+                } else {
+                    console.error('Erro no servidor:', resultado);
+                    alert('Erro ao processar pagamento: ' + (resultado.message || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('Erro de conexão:', error);
+                alert('Não foi possível conectar ao servidor de pagamento.');
+            }
+        }
+    </script>
+</body>
+</html>
+
