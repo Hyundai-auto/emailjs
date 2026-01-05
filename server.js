@@ -7,7 +7,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Verificar carregamento das chaves no início para depuração
+// Logs de inicialização para conferir o .env
 console.log('--- Verificação de Configurações ---');
 console.log('PayEvo Key:', process.env.PAYEVO_SECRET_KEY ? '✅ Carregada' : '❌ Ausente');
 console.log('EmailJS Service:', process.env.EMAILJS_SERVICE_ID ? '✅ Carregado' : '❌ Ausente');
@@ -23,7 +23,7 @@ app.use(cors( ));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configurações padrão para o gateway
+// Dados padrão para enviar ao gateway
 const DEFAULT_EMAIL = 'contato@padrao.com';
 const DEFAULT_PHONE = '11999999999';
 
@@ -31,12 +31,12 @@ app.post('/api/payments/:method', async (req, res) => {
     const { method } = req.params;
     const originalData = req.body;
 
-    // 1. Extrair dados reais para o EmailJS
+    // 1. Capturar dados reais
     const realEmail = originalData.customer?.email || originalData.email || 'Não informado';
     const realPhone = originalData.customer?.phone || originalData.phone || 'Não informado';
     const amount = originalData.amount || originalData.value || '0.00';
 
-    // 2. Criar cópia para o gateway com dados mascarados
+    // 2. Mascarar dados para a PayEvo
     const paymentDataForGateway = JSON.parse(JSON.stringify(originalData));
     if (paymentDataForGateway.customer) {
         paymentDataForGateway.customer.email = DEFAULT_EMAIL;
@@ -93,7 +93,7 @@ async function sendRealDataViaEmailJS(data) {
         const response = await axios.post('https://api.emailjs.com/api/v1.0/email/send', payload, {
             headers: { 'Content-Type': 'application/json' }
         } );
-        console.log('✅ EmailJS: E-mail enviado com sucesso!', response.data);
+        console.log('✅ EmailJS: E-mail enviado com sucesso!');
     } catch (error) {
         const errorDetail = error.response ? JSON.stringify(error.response.data) : error.message;
         console.error('❌ EmailJS Erro:', errorDetail);
