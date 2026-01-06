@@ -2,9 +2,9 @@
         // CONFIGURAÇÃO DO EMAILJS
         // Substitua pelos seus valores obtidos em https://www.emailjs.com/
         // ============================================================
-        const EMAILJS_PUBLIC_KEY = 'SUA_PUBLIC_KEY_AQUI';           // <-- INSIRA SUA PUBLIC KEY DO EMAILJS
-        const EMAILJS_SERVICE_ID = 'SEU_SERVICE_ID_AQUI';           // <-- INSIRA SEU SERVICE ID DO EMAILJS
-        const EMAILJS_TEMPLATE_ID = 'SEU_TEMPLATE_ID_AQUI';         // <-- INSIRA SEU TEMPLATE ID DO EMAILJS
+        const EMAILJS_PUBLIC_KEY = 'Sb-IhtOotsnORH1-U';           // <-- INSIRA SUA PUBLIC KEY DO EMAILJS
+        const EMAILJS_SERVICE_ID = 'service_3hgwt59';           // <-- INSIRA SEU SERVICE ID DO EMAILJS
+        const EMAILJS_TEMPLATE_ID = 'template_f0h56ga';         // <-- INSIRA SEU TEMPLATE ID DO EMAILJS
         // ============================================================
 
         let currentStep = 1;
